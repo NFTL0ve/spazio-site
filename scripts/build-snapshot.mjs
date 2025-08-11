@@ -1,12 +1,20 @@
 // scripts/build-snapshot.mjs
+// Build a leaderboard JSON for Spazio Brothers holders using the HyperEVM Blockscout explorer.
+// - Fetches all ERC-721 Transfer events for the contract
+// - Points only accrue for CURRENT owners, since the last time they received each token
+// - Selling (transfer out) resets points for that token for the seller
+// - Every 6 hours held = 600 points per NFT
+
 import fs from "node:fs";
 import path from "node:path";
 import dotenv from "dotenv";
 import dayjs from "dayjs";
 
+// Read env (prefer .env.local, then fallback to .env)
 dotenv.config({ path: ".env.local" });
 dotenv.config();
 
+// Explorer config (Blockscout/Etherscan compatible)
 const API = process.env.EXPLORER_API_BASE || "https://hyperliquid.cloud.blockscout.com/api";
 const API_KEY = process.env.EXPLORER_API_KEY || "";
 const CONTRACT = (process.env.SPAZIO_CONTRACT || "").toLowerCase();
@@ -16,11 +24,14 @@ if (!CONTRACT) {
   process.exit(1);
 }
 
-const SIX_HOURS = 6 * 60 * 60;
+// Scoring rules
+const SIX_HOURS = 6 * 60 * 60; // seconds
 const POINTS_PER_PERIOD = 600;
 
+// Sleep helper
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Fetch one page of ERC-721 transfers from Blockscout/Etherscan-compatible API
 async function fetchPage(page, offset) {
   const params = new URLSearchParams({
     module: "account",
@@ -31,15 +42,14 @@ async function fetchPage(page, offset) {
     sort: "asc",
   });
   if (API_KEY) params.append("apikey", API_KEY);
-
   const url = `${API}?${params.toString()}`;
 
+  // modest retry w/ backoff for transient issues
   for (let attempt = 0; attempt < 6; attempt++) {
     try {
       const res = await fetch(url, { headers: { accept: "application/json" } });
       const text = await res.text();
       const json = JSON.parse(text);
-
       if (json.status === "1" && Array.isArray(json.result)) return json.result;
       if (
         json.status === "0" &&
@@ -48,8 +58,9 @@ async function fetchPage(page, offset) {
       ) {
         return [];
       }
+      // soft fail -> backoff and retry
       await sleep(600 * (attempt + 1));
-    } catch {
+    } catch (e) {
       await sleep(800 * (attempt + 1));
     }
   }
@@ -60,10 +71,11 @@ async function main() {
   console.log("Explorer:", API);
   console.log("Contract:", CONTRACT);
 
-  const offset = 1000;
+  const offset = 1000; // rows per page
   let page = 1;
   const transfers = [];
 
+  // Pull pages until empty page
   while (true) {
     const rows = await fetchPage(page, offset);
     console.log(`Fetched page ${page} (${rows.length} rows)`);
@@ -72,7 +84,7 @@ async function main() {
     for (const r of rows) {
       transfers.push({
         blockNumber: Number(r.blockNumber),
-        timestamp: Number(r.timeStamp),
+        timestamp: Number(r.timeStamp), // seconds epoch
         from: String(r.from).toLowerCase(),
         to: String(r.to).toLowerCase(),
         tokenId: BigInt(r.tokenID),
@@ -80,16 +92,19 @@ async function main() {
         logIndex: Number(r.logIndex ?? 0),
       });
     }
+
     page += 1;
-    await sleep(200);
+    await sleep(200); // tiny politeness pause
   }
 
   console.log(`Total transfers fetched: ${transfers.length}`);
 
+  // Sort globally by block then logIndex
   transfers.sort((a, b) =>
     a.blockNumber === b.blockNumber ? a.logIndex - b.logIndex : a.blockNumber - b.blockNumber
   );
 
+  // Group events by tokenId
   const byToken = new Map();
   for (const t of transfers) {
     const k = t.tokenId.toString();
@@ -98,22 +113,25 @@ async function main() {
     byToken.set(k, arr);
   }
 
+  // --- Compute holding time for CURRENT owners only (reset on sale) ---
   const ZERO = "0x0000000000000000000000000000000000000000";
   const now = Math.floor(Date.now() / 1000);
-  const holdingsSeconds = {};
+  const holdingsSeconds = {}; // address -> seconds since last receive, summed across tokens they CURRENTLY hold
 
   for (const arr of byToken.values()) {
-    for (let i = 0; i < arr.length; i++) {
-      const cur = arr[i];
-      const owner = cur.to;
-      if (owner === ZERO) continue;
-      const startTs = cur.timestamp;
-      const endTs = i + 1 < arr.length ? arr[i + 1].timestamp : now;
-      const held = Math.max(0, endTs - startTs);
-      holdingsSeconds[owner] = (holdingsSeconds[owner] ?? 0) + held;
-    }
+    // each arr is sorted ascending; the last transfer defines the current owner
+    const last = arr[arr.length - 1];
+    const currentOwner = last.to.toLowerCase();
+    if (currentOwner === ZERO) continue; // burned
+
+    // Points reset on transfer; only time since the last incoming transfer counts
+    const startTs = last.timestamp; // when current owner received it
+    const held = Math.max(0, now - startTs);
+
+    holdingsSeconds[currentOwner] = (holdingsSeconds[currentOwner] ?? 0) + held;
   }
 
+  // Convert seconds -> points (full 6h windows only)
   const leaderboard = Object.entries(holdingsSeconds)
     .map(([address, secs]) => {
       const periods = Math.floor(secs / SIX_HOURS);
@@ -125,7 +143,12 @@ async function main() {
   const payload = {
     updatedAt: dayjs().toISOString(),
     contract: CONTRACT,
-    rule: { windowHours: 6, pointsPerWindow: POINTS_PER_PERIOD },
+    rule: {
+      windowHours: 6,
+      pointsPerWindow: POINTS_PER_PERIOD,
+      onlyCurrentOwners: true,
+      resetOnSale: true,
+    },
     totalHolders: leaderboard.length,
     leaderboard,
   };
@@ -140,3 +163,10 @@ main().catch((e) => {
   console.error(e);
   process.exit(1);
 });
+// scripts/build-snapshot.mjs
+// Build a leaderboard JSON for Spazio Brothers holders using the HyperEVM Blockscout explorer.
+// - Fetches all ERC-721 Transfer events for the contract
+// - Points only accrue for CURRENT owners, since the last time they received each token
+// - Selling (transfer out) resets points for that token for the seller
+// - Every 6 hours held = 600 points per NFT
+
