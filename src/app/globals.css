@@ -24,3 +24,22 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+/* === Spazio dark theme tokens === */
+:root {
+  --bg: #0a0a0a;          /* deep black */
+  --surface: #111217;     /* card bg */
+  --border: #1e2230;      /* card border */
+  --txt: #ffffff;         /* primary text */
+  --muted: #a8b0bf;       /* secondary text */
+  --accent: #a6ff4d;      /* neon mint */
+  --accent2: #39e6ff;     /* cyan */
+}
+
+/* Subtle neon grain + radial vignette */
+body {
+  background:
+    radial-gradient(60rem 60rem at 20% -10%, rgba(57,230,255,0.08), transparent 60%),
+    radial-gradient(70rem 70rem at 120% 10%, rgba(166,255,77,0.07), transparent 60%),
+    var(--bg);
+  color: var(--txt);
+}
