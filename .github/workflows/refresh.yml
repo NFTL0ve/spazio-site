@@ -2,7 +2,7 @@ name: Refresh Leaderboard
 
 on:
   schedule:
-    - cron: "0 */6 * * *"    # every 6 hours (UTC)
+    - cron: "0 */6 * * *"   # every 6 hours (UTC)
   workflow_dispatch:
 
 permissions:
@@ -12,13 +12,17 @@ permissions:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+    timeout-minutes: 20
 
-      - uses: actions/setup-node@v4
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
+          node-version: "20"
+          cache: "npm"
 
       - name: Install deps
         run: npm ci
@@ -27,8 +31,8 @@ jobs:
         run: npm run snapshot
         env:
           EXPLORER_API_BASE: https://hyperliquid.cloud.blockscout.com/api
-          SPAZIO_CONTRACT: 0x04483D877E95Ce182e8595A3f67fDccc7B55A676
-          # Optional:
+          SPAZIO_CONTRACT: "0x04483D877E95Ce182e8595A3f67fDccc7B55A676"  # quoted so YAML reads as string
+          # If you get an API key later, add it in repo Settings → Secrets and variables → Actions, then uncomment:
           # EXPLORER_API_KEY: ${{ secrets.EXPLORER_API_KEY }}
 
       - name: Create PR with updated JSON
