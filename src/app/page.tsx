@@ -1,165 +1,56 @@
-"use client";
+// src/app/page.tsx
+import Link from "next/link";
 
-import { useEffect, useMemo, useState } from "react";
-import { Card } from "@/components/ui/card";
-
-type Entry = { address: string; holdingSeconds: number; periods: number; points: number };
-type Data = { updatedAt: string; contract: string; leaderboard: Entry[] };
-
-export default function LeaderboardPage() {
-  const [data, setData] = useState<Data | null>(null);
-  const [err, setErr] = useState<string | null>(null);
-  const [query, setQuery] = useState("");
-
-  useEffect(() => {
-    fetch("/leaderboard.json")
-      .then((r) => r.json())
-      .then(setData)
-      .catch((e) => setErr(String(e)));
-  }, []);
-
-  const filtered = useMemo(() => {
-    if (!data) return [];
-    const q = query.trim().toLowerCase();
-    if (!q) return data.leaderboard;
-    return data.leaderboard.filter((e) => e.address.toLowerCase().includes(q));
-  }, [data, query]);
-
-  const isExact = /^0x[a-fA-F0-9]{40}$/.test(query.trim());
-  const exactRank =
-    data && isExact
-      ? data.leaderboard.findIndex(
-          (e) => e.address.toLowerCase() === query.trim().toLowerCase()
-        )
-      : -1;
-
-  const download = (type: "json" | "csv") => {
-    if (!data) return;
-    if (type === "json") {
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "spazio-points.json";
-      a.click();
-      URL.revokeObjectURL(url);
-      return;
-    }
-    const headers = ["rank", "address", "points", "periods", "holdingSeconds", "holdingHours"];
-    const rows = data.leaderboard.map((e, i) => [
-      String(i + 1),
-      e.address,
-      String(e.points),
-      String(e.periods),
-      String(e.holdingSeconds),
-      (e.holdingSeconds / 3600).toFixed(2),
-    ]);
-    const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "spazio-points.csv";
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const highlightAddr = query.trim().toLowerCase();
-
+export default function Home() {
   return (
-    <main className="min-h-screen bg-gradient-to-b from-[#FFF7EC] via-[#FFF3FB] to-white">
-      <div className="mx-auto max-w-6xl px-6 py-10">
-        <div className="mb-4 rounded-xl bg-[#FFF0F7] border border-pink-200 p-3 text-sm text-neutral-700">
-          <b>Rules:</b> Points update every 6h. <b>Selling an NFT resets points for that NFT.</b> Only
-          continuous holding since your last receive counts.
+    <main className="min-h-[calc(100vh-56px)] bg-[var(--bg)] text-[var(--txt)]">
+      <section className="relative overflow-hidden">
+        {/* soft neon glows */}
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -top-24 left-10 h-80 w-80 rounded-full bg-[var(--accent2)]/15 blur-3xl" />
+          <div className="absolute top-40 right-10 h-96 w-96 rounded-full bg-[var(--accent)]/14 blur-3xl" />
         </div>
 
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-4xl font-extrabold">Spazio Leaderboard</h1>
-            {data && (
-              <p className="text-sm text-neutral-600">
-                Updated: {new Date(data.updatedAt).toLocaleString()}
-              </p>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <button onClick={() => download("csv")} className="rounded-2xl bg-white border px-4 py-2">
-              Export CSV
-            </button>
-            <button onClick={() => download("json")} className="rounded-2xl bg-black text-white px-4 py-2">
-              Export JSON
-            </button>
-          </div>
-        </div>
+        <div className="mx-auto max-w-6xl px-6 py-20">
+          <h1 className="text-5xl font-extrabold tracking-tight">
+            Spazio <span className="text-white/80">Points</span>
+          </h1>
 
-        <div className="mt-6 grid gap-4 md:grid-cols-[2fr,1fr]">
-          <Card className="p-4">
-            <label className="text-sm font-medium">Search wallets</label>
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Paste or type a wallet (0x...)"
-              className="mt-2 w-full rounded-xl border border-neutral-300 bg-white px-4 py-3 outline-none"
-            />
-            <p className="mt-2 text-sm text-neutral-600">
-              Showing {filtered.length.toLocaleString()} wallets{query ? " (filtered)" : ""}
-            </p>
-          </Card>
-
-          <Card className="p-4">
-            <div className="text-sm">
-              <div className="font-medium mb-1">Your rank (paste full address)</div>
-              {exactRank >= 0 && data && (
-                <div className="mt-2 rounded-lg bg-[#E7F9FF] border border-sky-200 p-3">
-                  <div className="text-lg font-bold">Rank #{exactRank + 1}</div>
-                  <div className="text-sm text-neutral-700">
-                    Points: {data.leaderboard[exactRank].points.toLocaleString()} • Hours held:{" "}
-                    {(data.leaderboard[exactRank].holdingSeconds / 3600).toFixed(1)}
-                  </div>
-                </div>
-              )}
-              {isExact && exactRank < 0 && (
-                <div className="mt-2 text-neutral-600">Address not found in this snapshot.</div>
-              )}
-            </div>
-          </Card>
-        </div>
-
-        {!data && !err && <p className="mt-6">Loading…</p>}
-        {err && <p className="mt-6 text-red-600">Error loading JSON: {err}</p>}
-
-        <div className="mt-6 grid gap-3">
-          {filtered.slice(0, 200).map((e, i) => {
-            const isMatch = highlightAddr && e.address.toLowerCase() === highlightAddr;
-            return (
-              <Card
-                key={e.address}
-                className={`p-4 flex items-center justify-between ${isMatch ? "ring-2 ring-pink-400" : ""}`}
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-10 text-right tabular-nums">{i + 1}.</div>
-                  <div className="font-mono text-sm">
-                    {e.address.slice(0, 8)}…{e.address.slice(-6)}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="font-semibold tabular-nums">{e.points.toLocaleString()} pts</div>
-                  <div className="text-xs text-neutral-500">
-                    {(e.holdingSeconds / 3600).toFixed(1)}h • {e.periods}×6h
-                  </div>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
-
-        {filtered.length > 200 && (
-          <p className="mt-4 text-center text-sm text-neutral-500">
-            Showing top 200. Use search to find a wallet.
+          <p className="mt-4 max-w-2xl text-white/70">
+            Hold a Spazio Brother NFT. Every 6 hours = <b className="text-white">600 points</b> per NFT.
+            <br className="hidden sm:block" />
+            Selling resets points and past holders are removed.
           </p>
-        )}
-      </div>
+
+          <div className="mt-8 flex items-center gap-3">
+            <Link
+              href="/leaderboard"
+              className="rounded-xl bg-white text-black px-5 py-3 font-semibold hover:bg-white/90"
+            >
+              View Leaderboard
+            </Link>
+            <a
+              href="https://drip.trade/collections/spazio-brothers"
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-xl border border-white/20 px-5 py-3 text-white hover:bg-white/10"
+            >
+              View Collection
+            </a>
+          </div>
+
+          <div className="mt-10 grid gap-3 text-sm text-white/60">
+            <div className="inline-flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-[var(--accent)]" />
+              Points accrue only while you currently hold the NFT.
+            </div>
+            <div className="inline-flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-[var(--accent2)]" />
+              Exports available on the leaderboard page (CSV / JSON).
+            </div>
+          </div>
+        </div>
+      </section>
     </main>
   );
 }
