@@ -14,6 +14,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
+    # Define env once for the whole job (quoted so YAML treats them as strings)
+    env:
+      EXPLORER_API_BASE: "https://hyperliquid.cloud.blockscout.com/api"
+      SPAZIO_CONTRACT: "0x04483D877E95Ce182e8595A3f67fDccc7B55A676"
+      # If you get an API key later, add it in repo Settings → Secrets → Actions and uncomment:
+      # EXPLORER_API_KEY: ${{ secrets.EXPLORER_API_KEY }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -29,12 +36,8 @@ jobs:
 
       - name: Build snapshot
         run: npm run snapshot
-        env:
-          EXPLORER_API_BASE: https://hyperliquid.cloud.blockscout.com/api
-          SPAZIO_CONTRACT: "0x04483D877E95Ce182e8595A3f67fDccc7B55A676"
-          # EXPLORER_API_KEY: ${{ secrets.EXPLORER_API_KEY }}
 
-      - name: Upload JSON artifact (for debugging)
+      - name: Upload JSON artifact (for visibility)
         uses: actions/upload-artifact@v4
         with:
           name: leaderboard
@@ -42,7 +45,6 @@ jobs:
 
       - name: Create PR with updated JSON
         uses: peter-evans/create-pull-request@v6
-        continue-on-error: true
         with:
           commit-message: "chore: refresh leaderboard"
           title: "chore: refresh leaderboard"
