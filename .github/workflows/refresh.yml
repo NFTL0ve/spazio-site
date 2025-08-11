@@ -31,12 +31,18 @@ jobs:
         run: npm run snapshot
         env:
           EXPLORER_API_BASE: https://hyperliquid.cloud.blockscout.com/api
-          SPAZIO_CONTRACT: "0x04483D877E95Ce182e8595A3f67fDccc7B55A676"  # quoted so YAML reads as string
-          # If you get an API key later, add it in repo Settings → Secrets and variables → Actions, then uncomment:
+          SPAZIO_CONTRACT: "0x04483D877E95Ce182e8595A3f67fDccc7B55A676"
           # EXPLORER_API_KEY: ${{ secrets.EXPLORER_API_KEY }}
+
+      - name: Upload JSON artifact (for debugging)
+        uses: actions/upload-artifact@v4
+        with:
+          name: leaderboard
+          path: public/leaderboard.json
 
       - name: Create PR with updated JSON
         uses: peter-evans/create-pull-request@v6
+        continue-on-error: true
         with:
           commit-message: "chore: refresh leaderboard"
           title: "chore: refresh leaderboard"
