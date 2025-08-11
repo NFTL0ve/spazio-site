@@ -2,21 +2,20 @@ name: Refresh Leaderboard
 
 on:
   schedule:
-    - cron: "0 */6 * * *"   # every 6 hours (UTC)
+    - cron: "0 */6 * * *"    # every 6 hours (UTC)
   workflow_dispatch:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   refresh:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4   # keep default credentials (needed for push)
+      - uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
@@ -32,14 +31,13 @@ jobs:
           # Optional:
           # EXPLORER_API_KEY: ${{ secrets.EXPLORER_API_KEY }}
 
-      - name: Commit updated JSON (if any)
-        run: |
-          git config user.name "${{ github.actor }}"
-          git config user.email "${{ github.actor }}@users.noreply.github.com"
-          git add public/leaderboard.json
-          if git diff --cached --quiet; then
-            echo "No changes to commit."
-          else
-            git commit -m "chore: refresh leaderboard [skip ci]"
-            git push
-          fi
+      - name: Create PR with updated JSON
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "chore: refresh leaderboard"
+          title: "chore: refresh leaderboard"
+          body: "Automated snapshot update."
+          branch: bot/refresh-leaderboard
+          add-paths: |
+            public/leaderboard.json
+          delete-branch: true
