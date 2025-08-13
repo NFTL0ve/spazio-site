@@ -1,55 +1,83 @@
 // src/app/page.tsx
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
+type Rule = {
+  windowHours: number;
+  pointsPerWindow: number; // treated as "shrooms per window" for display
+  startAt?: string;
+};
+
+type Snapshot = { updatedAt: string; rule: Rule };
+
 export default function Home() {
+  const [rule, setRule] = useState<Rule | null>(null);
+
+  useEffect(() => {
+    fetch("/leaderboard.json")
+      .then((r) => r.json())
+      .then((d: Snapshot) => setRule(d.rule))
+      .catch(() =>
+        setRule({
+          windowHours: 6,
+          pointsPerWindow: 10,
+          startAt: "2025-08-01T00:00:00Z",
+        })
+      );
+  }, []);
+
+  const windowH = rule?.windowHours ?? 6;
+  const shrooms = rule?.pointsPerWindow ?? 10;
+  const since = rule?.startAt
+    ? new Date(rule.startAt).toLocaleDateString()
+    : undefined;
+
   return (
-    <main className="min-h-[calc(100vh-56px)] bg-[var(--bg)] text-[var(--txt)]">
-      <section className="relative overflow-hidden">
-        {/* soft neon glows */}
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-24 left-10 h-80 w-80 rounded-full bg-[var(--accent2)]/15 blur-3xl" />
-          <div className="absolute top-40 right-10 h-96 w-96 rounded-full bg-[var(--accent)]/14 blur-3xl" />
+    <main className="min-h-screen bg-[#0b0b0b] text-white">
+      <section className="mx-auto max-w-6xl px-6 py-16 md:py-24">
+        <h1 className="text-6xl font-extrabold tracking-tight">Spazio Shrooms</h1>
+
+        <p className="mt-6 max-w-3xl text-lg leading-relaxed text-white/85">
+          Hold a Spazio Brother NFT. Every {windowH} hours ={" "}
+          <b className="text-white">{shrooms} Shrooms</b> per NFT. Selling
+          resets Shrooms and past holders are removed
+          {since ? <>. Counting since {since}.</> : "."}
+        </p>
+
+        <div className="mt-10 flex flex-wrap gap-4">
+          <Link
+            href="/leaderboard"
+            className="rounded-2xl bg-white px-5 py-3 font-semibold text-black hover:bg-white/90"
+          >
+            View Leaderboard
+          </Link>
+
+          <a
+            href="https://drip.trade/collections/spazio-brothers"
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-2xl border border-white/20 px-5 py-3 font-semibold hover:bg-white/10"
+          >
+            View Collection
+          </a>
         </div>
 
-        <div className="mx-auto max-w-6xl px-6 py-20">
-          <h1 className="text-5xl font-extrabold tracking-tight">
-            Spazio <span className="text-white/80">Points</span>
-          </h1>
-
-          <p className="mt-4 max-w-2xl text-white/70">
-            Hold a Spazio Brother NFT. Every 6 hours = <b className="text-white">600 points</b> per NFT.
-            <br className="hidden sm:block" />
-            Selling resets points and past holders are removed.
-          </p>
-
-          <div className="mt-8 flex items-center gap-3">
-            <Link
-              href="/leaderboard"
-              className="rounded-xl bg-white text-black px-5 py-3 font-semibold hover:bg-white/90"
-            >
-              View Leaderboard
-            </Link>
-            <a
-              href="https://drip.trade/collections/spazio-brothers"
-              target="_blank"
-              rel="noreferrer"
-              className="rounded-xl border border-white/20 px-5 py-3 text-white hover:bg-white/10"
-            >
-              View Collection
-            </a>
-          </div>
-
-          <div className="mt-10 grid gap-3 text-sm text-white/60">
-            <div className="inline-flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-[var(--accent)]" />
-              Points accrue only while you currently hold the NFT.
-            </div>
-            <div className="inline-flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-[var(--accent2)]" />
-              Exports available on the leaderboard page (CSV / JSON).
-            </div>
-          </div>
-        </div>
+        <ul className="mt-10 space-y-2 text-white/80">
+          <li className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-lime-400" />
+            Shrooms accrue only while you currently hold the NFT.
+          </li>
+          <li className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-sky-400" />
+            Exports available on the leaderboard page (CSV / JSON).
+          </li>
+          <li className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-pink-400" />
+            Raffles are weighted by Shrooms (each Shroom = one ticket).
+          </li>
+        </ul>
       </section>
     </main>
   );
