@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2025-08-18T12:49:32.837Z",
+  "updatedAt": "2025-08-18T19:26:17.768Z",
   "contract": "0x04483d877e95ce182e8595a3f67fdccc7b55a676",
   "rule": {
     "label": "Shrooms",
@@ -12,11 +12,11 @@
   "totalHolders": 1,
   "leaderboard": [
     {
-      "address": "0x9fa7ea2fd2e7ccdf1ddafa47c52494831a8d3b7d",
-      "tokens": 5,
-      "holdingSeconds": 50860,
-      "periods": 2,
-      "points": 20
+      "address": "0x2146520ca9fabb6ad227d0e8bce2bf18fd742bab",
+      "tokens": 1,
+      "holdingSeconds": 2360,
+      "periods": 0,
+      "points": 0
     }
   ]
 }
