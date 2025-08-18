@@ -1,4 +1,4 @@
-name: Refresh Leaderboard
+name: Refresh Leaderboard (auto)
 
 on:
   schedule:
@@ -7,49 +7,48 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
+
+# Prevent overlapping runs
+concurrency:
+  group: refresh-leaderboard
+  cancel-in-progress: false
 
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-
-    # Define env once for the whole job (quoted so YAML treats them as strings)
-    env:
-      EXPLORER_API_BASE: "https://hyperliquid.cloud.blockscout.com/api"
-      SPAZIO_CONTRACT: "0x04483D877E95Ce182e8595A3f67fDccc7B55A676"
-      # If you get an API key later, add it in repo Settings → Secrets → Actions and uncomment:
-      # EXPLORER_API_KEY: ${{ secrets.EXPLORER_API_KEY }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "npm"
+          node-version: 20
+          cache: npm
 
       - name: Install deps
         run: npm ci
 
       - name: Build snapshot
+        env:
+          EXPLORER_API_BASE: https://hyperliquid.cloud.blockscout.com/api
+          SPAZIO_CONTRACT: 0x04483D877E95Ce182e8595A3f67fDccc7B55A676
+          # Optional: add in GitHub → Settings → Secrets and variables → Actions
+          EXPLORER_API_KEY: ${{ secrets.EXPLORER_API_KEY }}
         run: npm run snapshot
 
-      - name: Upload JSON artifact (for visibility)
-        uses: actions/upload-artifact@v4
+      - name: Commit & push if changed
+        uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          name: leaderboard
-          path: public/leaderboard.json
+          commit_message: "chore: refresh leaderboard"
+          file_pattern: public/leaderboard.json
 
-      - name: Create PR with updated JSON
-        uses: peter-evans/create-pull-request@v6
-        with:
-          commit-message: "chore: refresh leaderboard"
-          title: "chore: refresh leaderboard"
-          body: "Automated snapshot update."
-          branch: bot/refresh-leaderboard
-          add-paths: |
-            public/leaderboard.json
-          delete-branch: true
+      # Trigger a Production deploy on Vercel (set the secret in GitHub)
+      - name: Trigger Vercel Deploy Hook
+        if: ${{ secrets.VERCEL_DEPLOY_HOOK_URL != '' }}
+        run: curl -fsS -X POST "$VERCEL_DEPLOY_HOOK_URL"
+        env:
+          VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}

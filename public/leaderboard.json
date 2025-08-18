@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2025-08-18T11:22:42.879Z",
+  "updatedAt": "2025-08-18T12:49:32.837Z",
   "contract": "0x04483d877e95ce182e8595a3f67fdccc7b55a676",
   "rule": {
     "label": "Shrooms",
@@ -14,9 +14,9 @@
     {
       "address": "0x9fa7ea2fd2e7ccdf1ddafa47c52494831a8d3b7d",
       "tokens": 5,
-      "holdingSeconds": 24810,
-      "periods": 1,
-      "points": 10
+      "holdingSeconds": 50860,
+      "periods": 2,
+      "points": 20
     }
   ]
 }
